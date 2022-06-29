@@ -1,0 +1,2 @@
+class HiringRegime:
+    pass
