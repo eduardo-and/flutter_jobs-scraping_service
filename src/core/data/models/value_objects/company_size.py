@@ -1,2 +1,0 @@
-class CompanySize:
-    pass

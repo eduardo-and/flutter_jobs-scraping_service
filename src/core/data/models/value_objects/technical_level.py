@@ -1,2 +1,0 @@
-class TechnicalLeve:
-    pass
