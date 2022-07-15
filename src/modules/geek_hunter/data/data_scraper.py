@@ -1,8 +1,9 @@
 
 from datetime import date
-from bs4 import ResultSet, BeautifulSoup as soup
-
 import requests as requests
+from bs4 import ResultSet, BeautifulSoup as soup
+from lxml import etree
+
 
 from core import *
 
@@ -18,6 +19,7 @@ class GeekHunterDataScraper(IDataScraper):
         self.paginationUrls = self.__getUrls()
 
         for paginationUrl in self.paginationUrls:
+
             jobsByPage = self.__getVacanciesFromPage(paginationUrl)
             self.jobs.append(jobsByPage)
 
@@ -49,8 +51,12 @@ class GeekHunterDataScraper(IDataScraper):
             "div", attrs={"class": "information"})
 
         for vacancie in vacanciesSoup:
-            vacancyLink = vacancie.h2.a["href"]
-            vacancies = self.__getVacancy(vacancyLink)
+            try:
+                vacancyLink = vacancie.h2.a["href"]
+                vacancies.append(self.__getVacancy(vacancyLink))
+            except InvalidVacancyException as error:
+                error.lauchLog()  # Implement later
+                continue
 
         return vacancies
 
@@ -61,10 +67,27 @@ class GeekHunterDataScraper(IDataScraper):
         bSoup = soup(htmlPage.text, 'html.parser')
         vacancy["name"] = bSoup.findAll(
             "div", attrs={"class": "chakra-container"})[0].h1.text
-        
-        # __validateVacancy
 
+        vacancy["description"] = self.__createDescription(bSoup)
+        vacancy["name"] = vacancy["name"].replace('Flutter', '')
+        if(not self.__validateVacancy(title=vacancy["name"], description=vacancy["description"])):
+            raise InvalidVacancyException("Vacancy is not valid")
 
-    def __validateVacancy(self,title, description)->bool:
-        return
-    # Verifica se a vaga realmente é de flutter, buscando palavras chave no titulo e descrição
+    def __validateVacancy(self, title, description) -> bool:
+
+        # if("flutter" not in title.lower()):
+        #     if("mobile" not in title.lower() and "flutter" not in description.lower()):
+        #         return False
+        return False
+
+    def __createDescription(self, bSoup) -> str:
+        description: str = ""
+        dom = etree.HTML(str(bSoup))
+
+        # Get Atividades
+        description = dom.xpath(
+            '//*[@id="__next"]/div[3]/div/div/div[1]/div[3]/div')[0].text
+        if(description != "" and type(description) != None):
+            description = description.replace('•\t', '')
+            description = 'Atividades: ' + description
+        return description
